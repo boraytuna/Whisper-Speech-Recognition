@@ -182,6 +182,7 @@ def retranslate_from_state():
     if code is None:
         st.session_state.last_translation = ""
         st.session_state.last_language_label = ""
+        st.session_state.translation_area = ""   # <-- ADD THIS
         return
 
     try:
@@ -194,11 +195,13 @@ def retranslate_from_state():
 
         st.session_state.last_translation = translation_text
         st.session_state.last_language_label = label
+        st.session_state.translation_area = translation_text  # <-- ADD THIS
 
     except Exception as e:
         st.session_state.last_translation = ""
         st.session_state.last_language_label = ""
         st.session_state.translation_error = str(e)
+        st.session_state.translation_area = ""  # <-- ADD THIS
 
 
 # Language dropdown with on_change callback (THIS is the fix)
@@ -237,6 +240,7 @@ if st.button("Transcribe"):
 
         # Persist results
         st.session_state.last_transcription = transcription_text
+        st.session_state.transcription_area = transcription_text  # <-- ADD THIS
         st.session_state.last_output_folder = output_folder
         st.session_state.has_results = True
 
@@ -244,6 +248,7 @@ if st.button("Transcribe"):
         st.session_state.last_translation = ""
         st.session_state.last_language_label = ""
         st.session_state.translation_error = ""
+        st.session_state.translation_area = ""  # <-- ADD THIS
 
         # Translate immediately based on current dropdown selection
         if target_language_code is not None and transcription_text:
@@ -252,6 +257,7 @@ if st.button("Transcribe"):
 
             st.session_state.last_translation = translation_text
             st.session_state.last_language_label = target_language_label
+            st.session_state.translation_area = translation_text  # <-- ADD THIS
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
