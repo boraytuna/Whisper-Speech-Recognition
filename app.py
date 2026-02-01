@@ -1,4 +1,5 @@
 import os
+import json
 from datetime import datetime
 
 import streamlit as st
@@ -30,7 +31,7 @@ LANG_OPTIONS = {
     "Japanese": "ja",
     "Chinese (Simplified)": "zh-cn",
     "Chinese (Traditional)": "zh-tw",
-    # Add more languages here:
+    "Polish": "pl",
     "Italian": "it",
     "Portuguese": "pt",
     "Russian": "ru",
@@ -77,22 +78,76 @@ def create_output_folder(audio_file_name: str) -> str:
     return output_folder
 
 
-def copy_button(text: str, button_label: str, success_msg: str, key: str):
+def copy_button_html(text: str, button_label: str, element_id: str):
     """
-    Streamlit reruns on every button click. Using session_state keeps results.
-    This button copies text to clipboard via a tiny JS snippet.
+    Reliable clipboard copy for Safari/Chromium:
+    - Must be triggered by a real user click on an HTML button.
+    - Shows inline "Copied!" feedback inside the component.
     """
-    if st.button(button_label, key=key):
-        components.html(
-            f"""
-            <script>
-              navigator.clipboard.writeText({text!r});
-            </script>
-            """,
-            height=0,
-            width=0,
-        )
-        st.success(success_msg)
+    safe_text = json.dumps(text)  # safe JS string
+    html = f"""
+    <div style="margin: 0.25rem 0 1rem 0;">
+      <button
+        id="{element_id}"
+        style="
+          border: 1px solid rgba(255,255,255,0.25);
+          background: transparent;
+          color: inherit;
+          padding: 0.45rem 0.9rem;
+          border-radius: 0.5rem;
+          cursor: pointer;
+          font-size: 0.95rem;
+        "
+      >
+        {button_label}
+      </button>
+      <span id="{element_id}_msg" style="margin-left: 0.6rem; opacity: 0.85;"></span>
+
+      <script>
+        (function() {{
+          const btn = document.getElementById("{element_id}");
+          const msg = document.getElementById("{element_id}_msg");
+          const textToCopy = {safe_text};
+
+          if (!btn) return;
+
+          btn.addEventListener("click", async () => {{
+            try {{
+              // Preferred modern API
+              await navigator.clipboard.writeText(textToCopy);
+              msg.textContent = "Copied!";
+              setTimeout(() => msg.textContent = "", 1200);
+            }} catch (e) {{
+              // Fallback for older/locked-down contexts
+              try {{
+                const ta = document.createElement("textarea");
+                ta.value = textToCopy;
+                ta.style.position = "fixed";
+                ta.style.left = "-9999px";
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                const ok = document.execCommand("copy");
+                document.body.removeChild(ta);
+
+                if (ok) {{
+                  msg.textContent = "Copied!";
+                  setTimeout(() => msg.textContent = "", 1200);
+                }} else {{
+                  msg.textContent = "Copy blocked. Use Cmd+C.";
+                  setTimeout(() => msg.textContent = "", 2000);
+                }}
+              }} catch (e2) {{
+                msg.textContent = "Copy blocked. Use Cmd+C.";
+                setTimeout(() => msg.textContent = "", 2000);
+              }}
+            }}
+          }});
+        }})();
+      </script>
+    </div>
+    """
+    components.html(html, height=55)
 
 
 # ----------------------------
@@ -120,7 +175,7 @@ if st.button("Transcribe"):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(transcription_text)
 
-        # Persist results so they don't disappear on Copy button reruns
+        # Persist results so they don't disappear on reruns
         st.session_state.last_transcription = transcription_text
         st.session_state.last_translation = ""  # reset unless we translate below
         st.session_state.last_language_label = target_language_label
@@ -147,22 +202,21 @@ if st.button("Transcribe"):
 
 
 # ----------------------------
-# Persisted display (survives Copy button reruns)
+# Persisted display (survives reruns)
 # ----------------------------
 if st.session_state.has_results:
     st.write("### Transcription Result (English)")
     st.text_area(
         "Transcription (English)",
         value=st.session_state.last_transcription,
-        height=160,
+        height=140,
         key="transcription_area",
-        disabled=True,  # make it read-only
+        disabled=True,  # read-only
     )
-    copy_button(
+    copy_button_html(
         st.session_state.last_transcription,
         "Copy Transcription",
-        "Copied transcription to clipboard.",
-        key="copy_transcription_btn",
+        element_id="copy_transcription_btn",
     )
 
     if st.session_state.last_translation:
@@ -170,13 +224,12 @@ if st.session_state.has_results:
         st.text_area(
             f"Translation ({st.session_state.last_language_label})",
             value=st.session_state.last_translation,
-            height=160,
+            height=140,
             key="translation_area",
-            disabled=True,  # make it read-only
+            disabled=True,  # read-only
         )
-        copy_button(
+        copy_button_html(
             st.session_state.last_translation,
             "Copy Translation",
-            "Copied translation to clipboard.",
-            key="copy_translation_btn",
+            element_id="copy_translation_btn",
         )
