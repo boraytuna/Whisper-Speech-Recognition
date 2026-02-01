@@ -42,13 +42,6 @@ LANG_OPTIONS = {
     "Hindi": "hi",
 }
 
-target_language_label = st.selectbox("Translate Transcription To", list(LANG_OPTIONS.keys()))
-target_language_code = LANG_OPTIONS[target_language_label]
-
-# Buttons
-transcribe_clicked = st.button("Transcribe")
-translate_clicked = st.button("Translate (no re-transcribe)")
-
 # ----------------------------
 # Folders
 # ----------------------------
@@ -68,12 +61,12 @@ if "last_translation" not in st.session_state:
     st.session_state.last_translation = ""
 if "last_language_label" not in st.session_state:
     st.session_state.last_language_label = ""
-if "last_language_code" not in st.session_state:
-    st.session_state.last_language_code = None
 if "last_output_folder" not in st.session_state:
     st.session_state.last_output_folder = ""
 if "has_results" not in st.session_state:
     st.session_state.has_results = False
+if "translation_error" not in st.session_state:
+    st.session_state.translation_error = ""
 
 
 def create_output_folder(audio_file_name: str) -> str:
@@ -84,13 +77,17 @@ def create_output_folder(audio_file_name: str) -> str:
     return output_folder
 
 
+def save_translation(output_folder: str, language_label: str, translation_text: str):
+    translations_folder = os.path.join(output_folder, "Translations")
+    os.makedirs(translations_folder, exist_ok=True)
+    translation_file = os.path.join(translations_folder, f"{language_label}_translation.txt")
+    with open(translation_file, "w", encoding="utf-8") as f:
+        f.write(translation_text)
+
+
 def copy_button_html(text: str, button_label: str, element_id: str):
-    """
-    Reliable clipboard copy for Safari/Chromium:
-    - Must be triggered by a real user click on an HTML button.
-    - Shows inline "Copied!" feedback inside the component.
-    """
     safe_text = json.dumps(text)
+
     html = f"""
     <div style="margin: 0.4rem 0 1.2rem 0;">
       <button
@@ -165,18 +162,58 @@ def copy_button_html(text: str, button_label: str, element_id: str):
     components.html(html, height=58)
 
 
-def save_translation(output_folder: str, language_label: str, translation_text: str):
-    translations_folder = os.path.join(output_folder, "Translations")
-    os.makedirs(translations_folder, exist_ok=True)
-    translation_file = os.path.join(translations_folder, f"{language_label}_translation.txt")
-    with open(translation_file, "w", encoding="utf-8") as f:
-        f.write(translation_text)
+def retranslate_from_state():
+    """
+    Called when the language dropdown changes.
+    Re-translate using the existing transcription (no Whisper call).
+    """
+    st.session_state.translation_error = ""
 
+    label = st.session_state.target_language_label
+    code = LANG_OPTIONS.get(label)
+
+    # If we haven't transcribed yet, nothing to translate.
+    if not st.session_state.has_results or not st.session_state.last_transcription.strip():
+        st.session_state.last_translation = ""
+        st.session_state.last_language_label = ""
+        return
+
+    # If user chose None -> clear translation
+    if code is None:
+        st.session_state.last_translation = ""
+        st.session_state.last_language_label = ""
+        return
+
+    try:
+        transcription_text = st.session_state.last_transcription.strip()
+        translation_text = translator.translate(transcription_text, dest=code).text.strip()
+
+        # Save to the existing output folder from the last transcription run
+        output_folder = st.session_state.last_output_folder or results_folder
+        save_translation(output_folder, label, translation_text)
+
+        st.session_state.last_translation = translation_text
+        st.session_state.last_language_label = label
+
+    except Exception as e:
+        st.session_state.last_translation = ""
+        st.session_state.last_language_label = ""
+        st.session_state.translation_error = str(e)
+
+
+# Language dropdown with on_change callback (THIS is the fix)
+target_language_label = st.selectbox(
+    "Translate Transcription To",
+    list(LANG_OPTIONS.keys()),
+    key="target_language_label",
+    on_change=retranslate_from_state,
+)
+target_language_code = LANG_OPTIONS[target_language_label]
 
 # ----------------------------
 # Action: Transcribe
 # ----------------------------
-if transcribe_clicked:
+if st.button("Transcribe"):
     if uploaded_file is None:
         st.error("Please upload an audio file.")
         st.stop()
@@ -198,54 +235,26 @@ if transcribe_clicked:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(transcription_text)
 
-        # Persist results so they survive reruns
+        # Persist results
         st.session_state.last_transcription = transcription_text
         st.session_state.last_output_folder = output_folder
         st.session_state.has_results = True
 
-        # Reset translation unless we generate a new one below
+        # Reset translation
         st.session_state.last_translation = ""
         st.session_state.last_language_label = ""
-        st.session_state.last_language_code = None
+        st.session_state.translation_error = ""
 
-        # Optionally translate immediately on transcribe
+        # Translate immediately based on current dropdown selection
         if target_language_code is not None and transcription_text:
             translation_text = translator.translate(transcription_text, dest=target_language_code).text.strip()
             save_translation(output_folder, target_language_label, translation_text)
 
             st.session_state.last_translation = translation_text
             st.session_state.last_language_label = target_language_label
-            st.session_state.last_language_code = target_language_code
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
-
-
-# ----------------------------
-# Action: Translate only (no Whisper call)
-# ----------------------------
-if translate_clicked:
-    if not st.session_state.has_results or not st.session_state.last_transcription.strip():
-        st.error("No transcription available yet. Click Transcribe first.")
-    else:
-        if target_language_code is None:
-            # Clear translation
-            st.session_state.last_translation = ""
-            st.session_state.last_language_label = ""
-            st.session_state.last_language_code = None
-        else:
-            try:
-                transcription_text = st.session_state.last_transcription.strip()
-                translation_text = translator.translate(transcription_text, dest=target_language_code).text.strip()
-
-                output_folder = st.session_state.last_output_folder or results_folder
-                save_translation(output_folder, target_language_label, translation_text)
-
-                st.session_state.last_translation = translation_text
-                st.session_state.last_language_label = target_language_label
-                st.session_state.last_language_code = target_language_code
-            except Exception as e:
-                st.error(f"Translation failed: {e}")
 
 
 # ----------------------------
@@ -265,6 +274,9 @@ if st.session_state.has_results:
         "Copy Transcription",
         element_id="copy_transcription_btn",
     )
+
+    if st.session_state.translation_error:
+        st.error(f"Translation failed: {st.session_state.translation_error}")
 
     if st.session_state.last_translation:
         st.write(f"### Translated Transcription ({st.session_state.last_language_label})")
