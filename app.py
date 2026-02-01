@@ -45,6 +45,10 @@ LANG_OPTIONS = {
 target_language_label = st.selectbox("Translate Transcription To", list(LANG_OPTIONS.keys()))
 target_language_code = LANG_OPTIONS[target_language_label]
 
+# Buttons
+transcribe_clicked = st.button("Transcribe")
+translate_clicked = st.button("Translate (no re-transcribe)")
+
 # ----------------------------
 # Folders
 # ----------------------------
@@ -64,6 +68,8 @@ if "last_translation" not in st.session_state:
     st.session_state.last_translation = ""
 if "last_language_label" not in st.session_state:
     st.session_state.last_language_label = ""
+if "last_language_code" not in st.session_state:
+    st.session_state.last_language_code = None
 if "last_output_folder" not in st.session_state:
     st.session_state.last_output_folder = ""
 if "has_results" not in st.session_state:
@@ -77,10 +83,14 @@ def create_output_folder(audio_file_name: str) -> str:
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
 
-def copy_button_html(text: str, button_label: str, element_id: str):
-    import json
-    safe_text = json.dumps(text)
 
+def copy_button_html(text: str, button_label: str, element_id: str):
+    """
+    Reliable clipboard copy for Safari/Chromium:
+    - Must be triggered by a real user click on an HTML button.
+    - Shows inline "Copied!" feedback inside the component.
+    """
+    safe_text = json.dumps(text)
     html = f"""
     <div style="margin: 0.4rem 0 1.2rem 0;">
       <button
@@ -118,6 +128,8 @@ def copy_button_html(text: str, button_label: str, element_id: str):
           const msg = document.getElementById("{element_id}_msg");
           const textToCopy = {safe_text};
 
+          if (!btn) return;
+
           btn.addEventListener("click", async () => {{
             try {{
               await navigator.clipboard.writeText(textToCopy);
@@ -152,10 +164,19 @@ def copy_button_html(text: str, button_label: str, element_id: str):
     """
     components.html(html, height=58)
 
+
+def save_translation(output_folder: str, language_label: str, translation_text: str):
+    translations_folder = os.path.join(output_folder, "Translations")
+    os.makedirs(translations_folder, exist_ok=True)
+    translation_file = os.path.join(translations_folder, f"{language_label}_translation.txt")
+    with open(translation_file, "w", encoding="utf-8") as f:
+        f.write(translation_text)
+
+
 # ----------------------------
 # Action: Transcribe
 # ----------------------------
-if st.button("Transcribe"):
+if transcribe_clicked:
     if uploaded_file is None:
         st.error("Please upload an audio file.")
         st.stop()
@@ -177,30 +198,54 @@ if st.button("Transcribe"):
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(transcription_text)
 
-        # Persist results so they don't disappear on reruns
+        # Persist results so they survive reruns
         st.session_state.last_transcription = transcription_text
-        st.session_state.last_translation = ""  # reset unless we translate below
-        st.session_state.last_language_label = target_language_label
         st.session_state.last_output_folder = output_folder
         st.session_state.has_results = True
 
-        # Translate (optional)
+        # Reset translation unless we generate a new one below
+        st.session_state.last_translation = ""
+        st.session_state.last_language_label = ""
+        st.session_state.last_language_code = None
+
+        # Optionally translate immediately on transcribe
         if target_language_code is not None and transcription_text:
             translation_text = translator.translate(transcription_text, dest=target_language_code).text.strip()
+            save_translation(output_folder, target_language_label, translation_text)
 
-            # Save translation
-            translations_folder = os.path.join(output_folder, "Translations")
-            os.makedirs(translations_folder, exist_ok=True)
-            translation_file = os.path.join(translations_folder, f"{target_language_label}_translation.txt")
-            with open(translation_file, "w", encoding="utf-8") as f:
-                f.write(translation_text)
-
-            # Persist translation too
             st.session_state.last_translation = translation_text
             st.session_state.last_language_label = target_language_label
+            st.session_state.last_language_code = target_language_code
 
     except Exception as e:
         st.error(f"An error occurred: {e}")
+
+
+# ----------------------------
+# Action: Translate only (no Whisper call)
+# ----------------------------
+if translate_clicked:
+    if not st.session_state.has_results or not st.session_state.last_transcription.strip():
+        st.error("No transcription available yet. Click Transcribe first.")
+    else:
+        if target_language_code is None:
+            # Clear translation
+            st.session_state.last_translation = ""
+            st.session_state.last_language_label = ""
+            st.session_state.last_language_code = None
+        else:
+            try:
+                transcription_text = st.session_state.last_transcription.strip()
+                translation_text = translator.translate(transcription_text, dest=target_language_code).text.strip()
+
+                output_folder = st.session_state.last_output_folder or results_folder
+                save_translation(output_folder, target_language_label, translation_text)
+
+                st.session_state.last_translation = translation_text
+                st.session_state.last_language_label = target_language_label
+                st.session_state.last_language_code = target_language_code
+            except Exception as e:
+                st.error(f"Translation failed: {e}")
 
 
 # ----------------------------
@@ -213,7 +258,7 @@ if st.session_state.has_results:
         value=st.session_state.last_transcription,
         height=140,
         key="transcription_area",
-        disabled=True,  # read-only
+        disabled=True,
     )
     copy_button_html(
         st.session_state.last_transcription,
@@ -228,7 +273,7 @@ if st.session_state.has_results:
             value=st.session_state.last_translation,
             height=140,
             key="translation_area",
-            disabled=True,  # read-only
+            disabled=True,
         )
         copy_button_html(
             st.session_state.last_translation,
