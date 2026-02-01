@@ -77,31 +77,40 @@ def create_output_folder(audio_file_name: str) -> str:
     os.makedirs(output_folder, exist_ok=True)
     return output_folder
 
-
 def copy_button_html(text: str, button_label: str, element_id: str):
-    """
-    Reliable clipboard copy for Safari/Chromium:
-    - Must be triggered by a real user click on an HTML button.
-    - Shows inline "Copied!" feedback inside the component.
-    """
-    safe_text = json.dumps(text)  # safe JS string
+    import json
+    safe_text = json.dumps(text)
+
     html = f"""
-    <div style="margin: 0.25rem 0 1rem 0;">
+    <div style="margin: 0.4rem 0 1.2rem 0;">
       <button
         id="{element_id}"
         style="
-          border: 1px solid rgba(255,255,255,0.25);
-          background: transparent;
-          color: inherit;
-          padding: 0.45rem 0.9rem;
-          border-radius: 0.5rem;
+          border: 1px solid rgba(34,197,94,0.6);
+          background: rgba(34,197,94,0.08);
+          color: rgb(134,239,172);
+          padding: 0.45rem 0.95rem;
+          border-radius: 0.55rem;
           cursor: pointer;
           font-size: 0.95rem;
+          transition: background 0.2s ease, transform 0.05s ease;
         "
+        onmouseover="this.style.background='rgba(34,197,94,0.18)'"
+        onmouseout="this.style.background='rgba(34,197,94,0.08)'"
       >
         {button_label}
       </button>
-      <span id="{element_id}_msg" style="margin-left: 0.6rem; opacity: 0.85;"></span>
+
+      <span
+        id="{element_id}_msg"
+        style="
+          margin-left: 0.7rem;
+          color: rgb(74,222,128);
+          font-weight: 500;
+          opacity: 0;
+          transition: opacity 0.15s ease;
+        "
+      ></span>
 
       <script>
         (function() {{
@@ -109,16 +118,13 @@ def copy_button_html(text: str, button_label: str, element_id: str):
           const msg = document.getElementById("{element_id}_msg");
           const textToCopy = {safe_text};
 
-          if (!btn) return;
-
           btn.addEventListener("click", async () => {{
             try {{
-              // Preferred modern API
               await navigator.clipboard.writeText(textToCopy);
               msg.textContent = "Copied!";
-              setTimeout(() => msg.textContent = "", 1200);
+              msg.style.opacity = 1;
+              setTimeout(() => msg.style.opacity = 0, 1300);
             }} catch (e) {{
-              // Fallback for older/locked-down contexts
               try {{
                 const ta = document.createElement("textarea");
                 ta.value = textToCopy;
@@ -127,19 +133,16 @@ def copy_button_html(text: str, button_label: str, element_id: str):
                 document.body.appendChild(ta);
                 ta.focus();
                 ta.select();
-                const ok = document.execCommand("copy");
+                document.execCommand("copy");
                 document.body.removeChild(ta);
 
-                if (ok) {{
-                  msg.textContent = "Copied!";
-                  setTimeout(() => msg.textContent = "", 1200);
-                }} else {{
-                  msg.textContent = "Copy blocked. Use Cmd+C.";
-                  setTimeout(() => msg.textContent = "", 2000);
-                }}
+                msg.textContent = "Copied!";
+                msg.style.opacity = 1;
+                setTimeout(() => msg.style.opacity = 0, 1300);
               }} catch (e2) {{
-                msg.textContent = "Copy blocked. Use Cmd+C.";
-                setTimeout(() => msg.textContent = "", 2000);
+                msg.textContent = "Press ⌘+C";
+                msg.style.opacity = 1;
+                setTimeout(() => msg.style.opacity = 0, 1600);
               }}
             }}
           }});
@@ -147,8 +150,7 @@ def copy_button_html(text: str, button_label: str, element_id: str):
       </script>
     </div>
     """
-    components.html(html, height=55)
-
+    components.html(html, height=58)
 
 # ----------------------------
 # Action: Transcribe
