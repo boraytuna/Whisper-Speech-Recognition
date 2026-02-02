@@ -199,9 +199,6 @@ def tts_lang_from_googletrans_code(code: str | None) -> str:
 
 
 def speak_text(text: str, tts_lang: str, label: str):
-    """
-    Generate TTS audio (mp3) and play it in Streamlit.
-    """
     if not text or not text.strip():
         st.warning(f"No {label} text to read.")
         return
@@ -210,9 +207,14 @@ def speak_text(text: str, tts_lang: str, label: str):
         mp3_fp = io.BytesIO()
         tts = gTTS(text=text.strip(), lang=tts_lang)
         tts.write_to_fp(mp3_fp)
-        mp3_fp.seek(0)
 
-        st.audio(mp3_fp.read(), format="audio/mp3")
+        audio_bytes = mp3_fp.getvalue()
+        if not audio_bytes:
+            st.error("TTS produced empty audio. This usually means the gTTS request failed.")
+            return
+
+        st.audio(audio_bytes, format="audio/mpeg")
+
     except Exception as e:
         st.error(f"Text-to-speech failed ({label}): {e}")
 
