@@ -23,7 +23,6 @@ model_size = st.selectbox("Choose model size:", ["tiny", "base", "small", "mediu
 # googletrans needs language CODES (e.g., zh-cn), not names (e.g., "chinese")
 LANG_OPTIONS = {
     "None": None,
-    "English": "en",
     "Spanish": "es",
     "French": "fr",
     "German": "de",
@@ -68,6 +67,9 @@ if "has_results" not in st.session_state:
 if "translation_error" not in st.session_state:
     st.session_state.translation_error = ""
 
+# These are the widget values (so we don't fight Streamlit with `value=...`)
+st.session_state.setdefault("transcription_area", "")
+st.session_state.setdefault("translation_area", "")
 
 def create_output_folder(audio_file_name: str) -> str:
     folder_name = os.path.splitext(os.path.basename(audio_file_name))[0]
@@ -268,11 +270,12 @@ if st.button("Transcribe"):
 # ----------------------------
 if st.session_state.has_results:
     st.write("### Transcription Result (English)")
+    # keep widget state in sync with our stored result
+    st.session_state["transcription_area"] = st.session_state.last_transcription
     st.text_area(
         "Transcription (English)",
-        value=st.session_state.last_transcription,
-        height=140,
         key="transcription_area",
+        height=140,
         disabled=True,
     )
     copy_button_html(
@@ -286,11 +289,13 @@ if st.session_state.has_results:
 
     if st.session_state.last_translation:
         st.write(f"### Translated Transcription ({st.session_state.last_language_label})")
+        # keep widget state in sync with our stored result
+        st.session_state["translation_area"] = st.session_state.last_translation
+
         st.text_area(
             f"Translation ({st.session_state.last_language_label})",
-            value=st.session_state.last_translation,
-            height=140,
             key="translation_area",
+            height=140,
             disabled=True,
         )
         copy_button_html(
