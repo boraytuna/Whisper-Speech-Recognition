@@ -1,57 +1,45 @@
-# Personalized Improvements and Features
+# Whisper Speech Recognition – Web UI
 
-This fork of OpenAI's Whisper provides an enhanced interface for audio transcription and translation. Using Streamlit, the app offers an interactive way to transcribe audio files to English and translate them into various languages.
+This project provides a **browser-based interface** for OpenAI’s Whisper model, allowing users to transcribe, translate, and listen to speech directly from the web—no command line required.
 
-## Key Features
+🔗 **Live App:**  
+https://whisper-speech-recognition.streamlit.app/
 
-### 1. **Automated Folder Creation for Each Transcription Run**
-   - Each transcription is stored in a unique folder under a parent directory named `Results`.
-   - The folder is named based on the original audio file name and a timestamp, e.g., `Results/[audio_file_name]_[timestamp]`, ensuring organized storage without overwriting previous transcriptions.
+---
 
-### 2. **Temporary File Storage for Uploaded Audio Files**
-   - Uploaded audio files are stored temporarily in a `TempUploads` folder.
-   - This separation helps manage temporary files separately from the main transcription results.
+## What the UI Does
 
-### 3. **Interactive Web Interface with Streamlit (`app.py`)**
-   - The main interface is `app.py`, a web-based UI that enables users to upload audio files, select transcription models, and specify translation preferences.
-   - **Features**:
-     - **Upload Audio Files**: Supports audio formats like MP3, WAV, M4A, and MP4.
-     - **Choose Model Size**: Users can select from Whisper’s model sizes (`tiny`, `base`, `small`, `medium`, `large`) for transcription.
-     - **Specify Translation Language**: After transcription to English, the text can be translated to languages like Turkish, Spanish, French, German, Chinese, and Japanese.
-   - **Usage**:
-     - First, install the necessary libraries (including Streamlit and googletrans):
-       ```bash
-       pip install streamlit googletrans==4.0.0-rc1
-       ```
-     - Run the app with:
-       ```bash
-       streamlit run app.py
-       ```
-     - Open the app in your browser (usually at `http://localhost:8501`).
+- **Upload audio files** (MP3, WAV, M4A, MP4)
+- **Transcribe speech to English** using OpenAI Whisper
+- **Translate the transcription** into multiple languages (via Google Translate)
+  - Translation updates automatically when the language selection changes
+- **Listen to the transcription or translation** using text-to-speech
+- **Download results as `.txt` files** (transcription and translation)
 
-### 4. **Translation Options with Google Translate Integration**
-   - Once transcribed to English, the app can translate the text into various languages.
-   - **Translation Workflow**:
-     - Select a language from the `Translate Transcription To` dropdown.
-     - The app uses Google Translate to translate the English transcription to the selected language.
-     - Each translated text is stored in a `Translations` subfolder within the transcription folder, named `[target_language]_translation.txt`.
+All functionality is handled **directly in the UI**:
+- No server-side result storage
+- No user data persistence
+- No manual file management
 
-### Example Workflow
+---
 
-1. **Upload an Audio File**: Choose a file in MP3, WAV, M4A, or MP4 format.
-2. **Select Transcription Options**:
-   - Choose the model size for transcription.
-   - Select a language for translation, if desired (or leave as "None" for English-only transcription).
-3. **View and Save Results**:
-   - The app displays the English transcription and any selected translations.
-   - Transcriptions are saved in `Results/[audio_file_name]_[timestamp]/transcription.txt`.
-   - Translations are saved in `Results/[audio_file_name]_[timestamp]/Translations/[target_language]_translation.txt`.
+## Model Selection
 
-This enhanced setup offers a flexible, organized approach to audio transcription and translation, making Whisper accessible and powerful for multilingual projects.
+Users can choose from multiple Whisper model sizes (`tiny` → `large`) to balance speed and accuracy depending on their needs.
 
-These updates make `app.py` the primary and streamlined interface for managing transcriptions with Whisper. Temporary files and organized results folders ensure clear file management, while the web UI allows users to interact with Whisper effortlessly.
+---
 
-These enhancements make it easier to manage multiple transcription tasks, keep audio files and transcriptions organized, and provide an intuitive user interface for interacting with Whisper.
+## Tech Stack
+
+- **Whisper** – speech-to-text
+- **Streamlit** – web interface
+- **googletrans** – translation
+- **gTTS** – text-to-speech playback
+
+---
+
+This project is designed as a **simple, accessible demo** of Whisper’s capabilities for transcription, translation, and accessibility across devices and browsers.
+
 
 # Whisper
 
