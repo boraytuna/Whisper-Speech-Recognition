@@ -7,6 +7,9 @@ import streamlit.components.v1 as components
 from googletrans import Translator
 from whisper import load_model, transcribe
 
+import io
+from gtts import gTTS
+
 # ----------------------------
 # UI
 # ----------------------------
@@ -66,6 +69,8 @@ if "has_results" not in st.session_state:
     st.session_state.has_results = False
 if "translation_error" not in st.session_state:
     st.session_state.translation_error = ""
+if "last_language_code" not in st.session_state:
+    st.session_state.last_language_code = None
 
 # These are the widget values (so we don't fight Streamlit with `value=...`)
 st.session_state.setdefault("transcription_area", "")
@@ -164,6 +169,53 @@ def copy_button_html(text: str, button_label: str, element_id: str):
     components.html(html, height=58)
 
 
+def tts_lang_from_googletrans_code(code: str | None) -> str:
+    """
+    Map our translation codes (googletrans-style) to gTTS language codes.
+    gTTS doesn't support every locale the same way.
+    """
+    if not code:
+        return "en"
+
+    c = code.lower()
+
+    # Chinese: gTTS generally uses "zh" (and may not like zh-cn/zh-tw)
+    if c in ("zh-cn", "zh-tw"):
+        return "zh"
+
+    # Some other common normalizations (safe defaults)
+    if c.startswith("pt-"):
+        return "pt"
+    if c.startswith("en-"):
+        return "en"
+    if c.startswith("es-"):
+        return "es"
+    if c.startswith("fr-"):
+        return "fr"
+    if c.startswith("de-"):
+        return "de"
+
+    return c
+
+
+def speak_text(text: str, tts_lang: str, label: str):
+    """
+    Generate TTS audio (mp3) and play it in Streamlit.
+    """
+    if not text or not text.strip():
+        st.warning(f"No {label} text to read.")
+        return
+
+    try:
+        mp3_fp = io.BytesIO()
+        tts = gTTS(text=text.strip(), lang=tts_lang)
+        tts.write_to_fp(mp3_fp)
+        mp3_fp.seek(0)
+
+        st.audio(mp3_fp.read(), format="audio/mp3")
+    except Exception as e:
+        st.error(f"Text-to-speech failed ({label}): {e}")
+
 def retranslate_from_state():
     """
     Called when the language dropdown changes.
@@ -197,6 +249,7 @@ def retranslate_from_state():
 
         st.session_state.last_translation = translation_text
         st.session_state.last_language_label = label
+        st.session_state.last_language_code = code
         st.session_state.translation_area = translation_text  # <-- ADD THIS
 
     except Exception as e:
@@ -259,6 +312,7 @@ if st.button("Transcribe"):
 
             st.session_state.last_translation = translation_text
             st.session_state.last_language_label = target_language_label
+            st.session_state.last_language_code = target_language_code
             st.session_state.translation_area = translation_text  # <-- ADD THIS
 
     except Exception as e:
@@ -284,6 +338,13 @@ if st.session_state.has_results:
         element_id="copy_transcription_btn",
     )
 
+    if st.button("🔊 Read Transcription"):
+        speak_text(
+            st.session_state.last_transcription,
+            "en",
+            "transcription",
+        )
+
     if st.session_state.translation_error:
         st.error(f"Translation failed: {st.session_state.translation_error}")
 
@@ -303,3 +364,13 @@ if st.session_state.has_results:
             "Copy Translation",
             element_id="copy_translation_btn",
         )
+        
+        if st.button("🔊 Read Translation"):
+            tts_lang = tts_lang_from_googletrans_code(
+                st.session_state.last_language_code
+            )
+            speak_text(
+                st.session_state.last_translation,
+                tts_lang,
+                "translation",
+            )
