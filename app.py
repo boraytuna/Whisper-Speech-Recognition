@@ -334,17 +334,18 @@ if st.session_state.has_results:
         height=140,
         disabled=True,
     )
+    st.download_button(
+        "Download Transcription (.txt)",
+        data=st.session_state.last_transcription.encode("utf-8"),
+        file_name="transcription.txt",
+        mime="text/plain; charset=utf-8",
+        key="dl_transcription",
+    )
+
     copy_button_html(
         st.session_state.last_transcription,
         "Copy Transcription",
         element_id="copy_transcription_btn",
-    )
-
-    st.download_button(
-        "Download Transcription (.txt)",
-        data=st.session_state.last_transcription,
-        file_name="transcription.txt",
-        mime="text/plain",
     )
 
     if st.button("🔊 Read Transcription"):
@@ -368,17 +369,18 @@ if st.session_state.has_results:
             height=140,
             disabled=True,
         )
+        st.download_button(
+            "Download Translation (.txt)",
+            data=st.session_state.last_translation.encode("utf-8"),
+            file_name=f"translation_{st.session_state.last_language_label or 'unknown'}.txt",
+            mime="text/plain; charset=utf-8",
+            key="dl_translation",
+        )
+
         copy_button_html(
             st.session_state.last_translation,
             "Copy Translation",
             element_id="copy_translation_btn",
-        )
-
-        st.download_button(
-            "Download Translation (.txt)",
-            data=st.session_state.last_translation,
-            file_name=f"translation_{st.session_state.last_language_label or 'unknown'}.txt",
-            mime="text/plain",
         )
         
         if st.button("🔊 Read Translation"):
