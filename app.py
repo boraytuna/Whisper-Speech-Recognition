@@ -328,32 +328,46 @@ if st.session_state.has_results:
     st.write("### Transcription Result (English)")
     # keep widget state in sync with our stored result
     st.session_state["transcription_area"] = st.session_state.last_transcription
-    st.text_area(
-        "Transcription (English)",
-        key="transcription_area",
-        height=140,
-        disabled=True,
-    )
-    st.download_button(
-        "Download Transcription (.txt)",
-        data=st.session_state.last_transcription.encode("utf-8"),
-        file_name="transcription.txt",
-        mime="text/plain; charset=utf-8",
-        key="dl_transcription",
+
+    st.markdown(
+        f"""
+        <div style="
+            background-color: #1f2933;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: #e5e7eb;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            user-select: text;
+        ">
+        {st.session_state.last_transcription}
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    copy_button_html(
-        st.session_state.last_transcription,
-        "Copy Transcription",
-        element_id="copy_transcription_btn",
-    )
+    c1, c2, c3 = st.columns([1, 1, 1])
 
-    if st.button("🔊 Read Transcription"):
-        speak_text(
-            st.session_state.last_transcription,
-            "en",
-            "transcription",
+    with c1:
+        st.download_button(
+            "⬇️ Download",
+            data=st.session_state.last_transcription.encode("utf-8"),
+            file_name="transcription.txt",
+            mime="text/plain; charset=utf-8",
+            key="dl_transcription",
+            use_container_width=True,
         )
+
+    with c2:
+        copy_button_html(
+            st.session_state.last_transcription,
+            "📋 Copy",
+            element_id="copy_transcription_btn",
+        )
+
+    with c3:
+        if st.button("🔊 Listen", key="listen_transcription", use_container_width=True):
+            speak_text(st.session_state.last_transcription, "en", "transcription")
 
     if st.session_state.translation_error:
         st.error(f"Translation failed: {st.session_state.translation_error}")
@@ -363,32 +377,43 @@ if st.session_state.has_results:
         # keep widget state in sync with our stored result
         st.session_state["translation_area"] = st.session_state.last_translation
 
-        st.text_area(
-            f"Translation ({st.session_state.last_language_label})",
-            key="translation_area",
-            height=140,
-            disabled=True,
-        )
-        st.download_button(
-            "Download Translation (.txt)",
-            data=st.session_state.last_translation.encode("utf-8"),
-            file_name=f"translation_{st.session_state.last_language_label or 'unknown'}.txt",
-            mime="text/plain; charset=utf-8",
-            key="dl_translation",
+        st.markdown(
+            f"""
+            <div style="
+                background-color: #1f2933;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                color: #e5e7eb;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                user-select: text;
+            ">
+            {st.session_state.last_translation}
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        copy_button_html(
-            st.session_state.last_translation,
-            "Copy Translation",
-            element_id="copy_translation_btn",
-        )
-        
-        if st.button("🔊 Read Translation"):
-            tts_lang = tts_lang_from_googletrans_code(
-                st.session_state.last_language_code
+        c1, c2, c3 = st.columns([1, 1, 1])
+
+        with c1:
+            st.download_button(
+                "⬇️ Download",
+                data=st.session_state.last_translation.encode("utf-8"),
+                file_name=f"translation_{st.session_state.last_language_label or 'unknown'}.txt",
+                mime="text/plain; charset=utf-8",
+                key="dl_translation",
+                use_container_width=True,
             )
-            speak_text(
+
+        with c2:
+            copy_button_html(
                 st.session_state.last_translation,
-                tts_lang,
-                "translation",
+                "📋 Copy",
+                element_id="copy_translation_btn",
             )
+
+        with c3:
+            if st.button("🔊 Listen", key="listen_translation", use_container_width=True):
+                tts_lang = tts_lang_from_googletrans_code(st.session_state.last_language_code)
+                speak_text(st.session_state.last_translation, tts_lang, "translation")
