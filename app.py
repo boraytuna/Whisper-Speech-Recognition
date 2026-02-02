@@ -96,50 +96,39 @@ def copy_button_html(text: str, button_label: str, element_id: str):
     safe_text = json.dumps(text)
 
     html = f"""
-    <div style="margin: 0.4rem 0 1.2rem 0;">
+    <div style="width: 100%;">
       <button
         id="{element_id}"
         style="
+          width: 100%;
+          height: 42px;
           border: 1px solid rgba(34,197,94,0.6);
-          background: rgba(34,197,94,0.08);
+          background: rgba(34,197,94,0.12);
           color: rgb(134,239,172);
-          padding: 0.45rem 0.95rem;
           border-radius: 0.55rem;
           cursor: pointer;
           font-size: 0.95rem;
+          font-weight: 500;
           transition: background 0.2s ease, transform 0.05s ease;
         "
-        onmouseover="this.style.background='rgba(34,197,94,0.18)'"
-        onmouseout="this.style.background='rgba(34,197,94,0.08)'"
+        onmouseover="this.style.background='rgba(34,197,94,0.22)'"
+        onmouseout="this.style.background='rgba(34,197,94,0.12)'"
       >
         {button_label}
       </button>
 
-      <span
-        id="{element_id}_msg"
-        style="
-          margin-left: 0.7rem;
-          color: rgb(74,222,128);
-          font-weight: 500;
-          opacity: 0;
-          transition: opacity 0.15s ease;
-        "
-      ></span>
-
       <script>
         (function() {{
           const btn = document.getElementById("{element_id}");
-          const msg = document.getElementById("{element_id}_msg");
           const textToCopy = {safe_text};
+          const defaultLabel = "{button_label}";
+          const copiedLabel = "✅ Copied";
 
           if (!btn) return;
 
           btn.addEventListener("click", async () => {{
             try {{
               await navigator.clipboard.writeText(textToCopy);
-              msg.textContent = "Copied!";
-              msg.style.opacity = 1;
-              setTimeout(() => msg.style.opacity = 0, 1300);
             }} catch (e) {{
               try {{
                 const ta = document.createElement("textarea");
@@ -151,22 +140,24 @@ def copy_button_html(text: str, button_label: str, element_id: str):
                 ta.select();
                 document.execCommand("copy");
                 document.body.removeChild(ta);
-
-                msg.textContent = "Copied!";
-                msg.style.opacity = 1;
-                setTimeout(() => msg.style.opacity = 0, 1300);
               }} catch (e2) {{
-                msg.textContent = "Press ⌘+C";
-                msg.style.opacity = 1;
-                setTimeout(() => msg.style.opacity = 0, 1600);
+                return;
               }}
             }}
+
+            // Change button label
+            btn.textContent = copiedLabel;
+
+            // Revert after delay
+            setTimeout(() => {{
+              btn.textContent = defaultLabel;
+            }}, 1500);
           }});
         }})();
       </script>
     </div>
     """
-    components.html(html, height=58)
+    components.html(html, height=50)
 
 
 def tts_lang_from_googletrans_code(code: str | None) -> str:
