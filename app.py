@@ -340,6 +340,13 @@ if st.session_state.has_results:
         element_id="copy_transcription_btn",
     )
 
+    st.download_button(
+        "Download Transcription (.txt)",
+        data=st.session_state.last_transcription,
+        file_name="transcription.txt",
+        mime="text/plain",
+    )
+
     if st.button("🔊 Read Transcription"):
         speak_text(
             st.session_state.last_transcription,
@@ -365,6 +372,13 @@ if st.session_state.has_results:
             st.session_state.last_translation,
             "Copy Translation",
             element_id="copy_translation_btn",
+        )
+
+        st.download_button(
+            "Download Translation (.txt)",
+            data=st.session_state.last_translation,
+            file_name=f"translation_{st.session_state.last_language_label or 'unknown'}.txt",
+            mime="text/plain",
         )
         
         if st.button("🔊 Read Translation"):
